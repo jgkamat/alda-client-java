@@ -271,6 +271,11 @@ public class AldaServer extends AldaProcess {
   public void play(String code, String history, String from, String to, boolean catchExceptions)
     throws NoResponseException {
 
+    // Preprocess code string
+    code = AldaPreprocessor.preprocess(code).toString();
+    // Preprocess history string
+    history = AldaPreprocessor.preprocess(history).toString();
+
     AldaRequest req = new AldaRequest(this.host, this.port);
     req.command = "play";
     req.body = code;
