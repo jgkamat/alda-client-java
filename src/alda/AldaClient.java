@@ -29,7 +29,25 @@ public class AldaClient {
     }
   }
 
-  public static void updateAlda() throws URISyntaxException {
+  public static int copyBinary(String to) throws URISyntaxException {
+    String programPath = Util.getProgramPath();
+    File aldaPath = new File(programPath);
+    File newPath = new File(to);
+
+    // Sleep for a bit to ensure the launching program has time to quit
+    try {
+      Thread.sleep(2000);
+    } catch (InterruptedException e) {
+      // Keep going.
+    }
+
+    // Copy existing alda binary to temp directory
+    if (!Util.moveFile(aldaPath, newPath))
+      return 1;
+    return 0;
+  }
+
+  public static int updateAlda() throws URISyntaxException {
     // Get the path to the current alda executable
     String programPath = Util.getProgramPath();
     String latestApiStr = "https://api.github.com/repos/alda-lang/alda/releases/latest";
@@ -41,24 +59,23 @@ public class AldaClient {
     if (!aldaPath.isFile()) {
       System.err.println("Unable to determine the current location of the alda binary. ");
       System.err.println("Are you running a development version?");
-      System.err.println("Attempted location is '" + programPath + "'");
-      return;
+      System.err.println("Our best guess is: '" + programPath + "'");
+      return 1;
     }
 
-    // In order to avoid copying directly over the current file, we move our file to a tmp dir,
-    // then download where we want (the old location).
-    File aldaUpdateTempDir;
-    try {
-      aldaUpdateTempDir = Files.createTempDirectory("alda-updater").toFile();
-    } catch (IOException e) {
-      System.err.println("Could not create a temporary directory for the updater.");
-      System.err.println("Maybe you are out of space?");
-      e.printStackTrace();
-      return;
+    // If we are on windows, we cannot copy over a running binary, so let's download to a tmp dir.
+    if (SystemUtils.IS_OS_WINDOWS) {
+      try {
+        File tempFile = Files.createTempDirectory("alda-updater").toFile();
+        aldaPath = new File(aldaPath, "alda_new.exe");
+      } catch (IOException e) {
+        System.err.println("Could not create a temporary directory for the updater.");
+        System.err.println("Maybe you are out of space?");
+        e.printStackTrace();
+        return 1;
+      }
     }
-    File aldaCopyPath = new File(
-      aldaUpdateTempDir,
-      (SystemUtils.IS_OS_WINDOWS ? "alda_old.exe" : "alda_old"));
+
 
     // Make a call to the Github API to get the latest version number/download URL
     try {
@@ -66,7 +83,7 @@ public class AldaClient {
     } catch (IOException e) {
       System.err.println("There was an error connecting to the Github API.");
       e.printStackTrace();
-      return;
+      return 1;
     }
 
     // Turn api result into version numbers and links
@@ -81,7 +98,7 @@ public class AldaClient {
     // Check to see if we currently have the version determined by latestTag
     if (latestTag.indexOf(clientVersion) != -1 || clientVersion.indexOf(latestTag) != -1) {
       System.out.println("Your version of alda (" + clientVersion +") is up to date!");
-      return;
+      return 1;
     }
 
     for (JsonElement i : job.getAsJsonArray("assets")) {
@@ -94,7 +111,7 @@ public class AldaClient {
 
     if (downloadURL == null) {
       System.err.println("Alda download link not found for your platform.");
-      return;
+      return 1;
     }
 
     // Request confirmation from user:
@@ -103,30 +120,18 @@ public class AldaClient {
     String name = (new Scanner(System.in)).nextLine();
     if (!(name.equalsIgnoreCase("y") || name.equalsIgnoreCase("yes"))) {
       System.out.println("Quitting...");
-      return;
+      return 1;
     }
-
-    // Copy existing alda binary to temp directory
-    if (!Util.moveFile(aldaPath, aldaCopyPath))
-      return;
-
 
     System.out.println("Downloading " + downloadURL + "...");
 
     try {
       // Download file from downloadURL to programPath
-      Util.downloadFile(downloadURL, programPath);
+      Util.downloadFile(downloadURL, aldaPath.getAbsolutePath());
     } catch (IOException e) {
       System.err.println("Error while downloading file:");
       e.printStackTrace();
-      // Try to get our old file back on the path!
-      // Wish us luck...
-      System.out.println("Attempting to restore old alda executable.");
-      if (!Util.moveFile(aldaCopyPath, aldaPath)) {
-        System.err.println("[ERROR] There was an error restoring your old alda installation!");
-        System.err.println("You will probably need to reinstall alda completely.");
-      }
-      return;
+      return 1;
     }
 
     // set as executable if on UNIX
@@ -134,9 +139,23 @@ public class AldaClient {
       aldaPath.setExecutable(true);
     }
 
+    // If we are on windows, call the just-downloaded binary with `alda update --copy`
+    // with the current binary
+    if (SystemUtils.IS_OS_WINDOWS) {
+      System.out.println("Downloaded alda update, attempting install in background.");
+      try {
+        Runtime.getRuntime().exec(aldaPath.getAbsolutePath() + " --copy " + aldaPath.getAbsolutePath());
+      } catch (IOException e) {
+        System.err.println("There was an error trying to copy the alda binary to it's target location");
+        e.printStackTrace();
+        return 1;
+      }
+    }
+
     System.out.println();
     System.out.println("Updated alda " + clientVersion + " => " + latestTag + ".");
     System.out.println("If you have any currently running servers, you may want to restart them so that they are running the latest version.");
+    return 0;
   }
 
 

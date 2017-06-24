@@ -78,7 +78,11 @@ public class Main {
   private static class CommandHelp extends AldaCommand {}
 
   @Parameters(commandDescription = "Download and install the latest release of Alda")
-  private static class CommandUpdate extends AldaCommand {}
+  private static class CommandUpdate extends AldaCommand {
+      @Parameter(names = {"--copy"},
+                 description = "Copies the current alda binary to the given target. Indended for internal use.")
+      public String updateCopyLocation = "";
+  }
 
   @Parameters(commandDescription = "Start the Alda server")
   private static class CommandStartServer extends AldaCommand {}
@@ -224,8 +228,14 @@ public class Main {
 
         case "update":
           handleCommandSpecificHelp(jc, "update", update);
-          AldaClient.updateAlda();
-          System.exit(0);
+          int exitCode = 0;
+          if (!update.updateCopyLocation.isEmpty()) {
+            // Copy the current binary over the target
+            exitCode = AldaClient.copyBinary(update.updateCopyLocation);
+          } else {
+            exitCode = AldaClient.updateAlda();
+          }
+          System.exit(exitCode);
 
         case "server":
           handleCommandSpecificHelp(jc, "server", serverCmd);
