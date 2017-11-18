@@ -22,17 +22,17 @@ import static org.fusesource.jansi.Ansi.*;
 import static org.fusesource.jansi.Ansi.Color.*;
 
 public class AldaServer extends AldaProcess {
-  private static final int PING_TIMEOUT = 100; // ms
-  private static final int PING_RETRIES = 5;
-  private static final int STARTUP_RETRY_INTERVAL = 250; // ms
-  private static final int SHUTDOWN_RETRY_INTERVAL = 250; // ms
-  private static final int STATUS_RETRY_INTERVAL = 200;  // ms
-  private static final int STATUS_RETRIES = 10;
-  private static final int PLAY_STATUS_INTERVAL = 250;   // ms
+  private static final int PING_TIMEOUT = 10000; // ms
+  private static final int PING_RETRIES = 50;
+  private static final int STARTUP_RETRY_INTERVAL = 25000; // ms
+  private static final int SHUTDOWN_RETRY_INTERVAL = 25000; // ms
+  private static final int STATUS_RETRY_INTERVAL = 20000;  // ms
+  private static final int STATUS_RETRIES = 100;
+  private static final int PLAY_STATUS_INTERVAL = 25000;   // ms
 
   // Relevant to playing input from the REPL.
   private static final int BUSY_WORKER_TIMEOUT = 10000;      // ms
-  private static final int BUSY_WORKER_RETRY_INTERVAL = 500; // ms
+  private static final int BUSY_WORKER_RETRY_INTERVAL = 50000; // ms
 
   public AldaServer(String host, int port, int timeout, boolean verbose, boolean quiet) {
     this.host = normalizeHost(host);

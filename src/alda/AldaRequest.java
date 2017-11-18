@@ -51,7 +51,7 @@ public class AldaRequest {
     return getSocket();
   }
 
-  private final static int REQUEST_TIMEOUT = 500; //  ms
+  private final static int REQUEST_TIMEOUT = 50000; //  ms
   private final static int REQUEST_RETRIES = 10;  //  Before we abandon
 
   // Enable debug to print out all json queries to server
